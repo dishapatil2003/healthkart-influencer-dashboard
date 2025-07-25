@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import base64
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 # ----------------------------
 # Streamlit Page Config
@@ -9,46 +11,33 @@ import base64
 st.set_page_config(page_title="HealthKart Dashboard", layout="wide")
 
 # ----------------------------
-# Custom CSS for Animated Background and Cards
+# Custom CSS for Professional Light Theme
 # ----------------------------
 st.markdown("""
     <style>
-    /* Animated Gradient Background */
     .main {
-        background: linear-gradient(-45deg, #f8f9fc, #e0eafc, #f1f8ff, #e4ecfa);
-        background-size: 400% 400%;
-        animation: gradientBG 12s ease infinite;
+        background: linear-gradient(120deg, #f8f9fc, #eef2f7);
     }
-    @keyframes gradientBG {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-
-    /* Sidebar */
     section[data-testid="stSidebar"] {
         background-color: #ffffff;
         border-right: 2px solid #e0e0e0;
     }
-
-    /* KPI Cards */
     .kpi-card {
-        background: linear-gradient(135deg, #ffecd2, #fcb69f);
+        background: linear-gradient(135deg, #fdfbfb, #ebedee);
         border-radius: 12px;
         padding: 20px;
-        color: #333333;
+        color: #2c3e50;
         font-weight: bold;
         text-align: center;
         font-size: 18px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     .kpi-value {
         font-size: 28px;
         margin-top: 10px;
         font-weight: bold;
+        color: #0073e6;
     }
-
-    /* Insights Cards */
     .insight-card {
         background: #ffffff;
         border-radius: 10px;
@@ -103,9 +92,16 @@ else:
 st.sidebar.header("🔍 Filters")
 campaign = st.sidebar.selectbox("Select Campaign", df_track['campaign'].unique())
 platforms = st.sidebar.multiselect("Select Platforms", df_inf['platform'].unique(), default=df_inf['platform'].unique())
+brands = st.sidebar.multiselect("Select Brands", df_track['source'].unique(), default=df_track['source'].unique())
+products = st.sidebar.multiselect("Select Products", df_track['product'].unique(), default=df_track['product'].unique())
 
 filtered_inf = df_inf[df_inf['platform'].isin(platforms)]
-filtered_track = df_track[(df_track['campaign'] == campaign) & (df_track['influencer_id'].isin(filtered_inf['ID']))]
+filtered_track = df_track[
+    (df_track['campaign'] == campaign) &
+    (df_track['source'].isin(brands)) &
+    (df_track['product'].isin(products)) &
+    (df_track['influencer_id'].isin(filtered_inf['ID']))
+]
 
 # ----------------------------
 # Metrics Calculation
@@ -155,12 +151,10 @@ with tab2:
     st.subheader("Charts Visualization")
     fig1 = px.bar(top_inf, x='name', y='revenue', color='platform', title="Top Influencers by Revenue",
                   text_auto='.2s', color_discrete_sequence=px.colors.qualitative.Set2)
-    fig1.update_traces(marker=dict(line=dict(width=1, color='DarkSlateGrey')))
     st.plotly_chart(fig1, use_container_width=True)
 
     fig2 = px.pie(platform_data, values='count', names='platform', title="Influencer Platform Share",
                   color_discrete_sequence=px.colors.sequential.Teal)
-    fig2.update_traces(textposition='inside', textinfo='percent+label')
     st.plotly_chart(fig2, use_container_width=True)
 
     fig3 = px.bar(roas_df.sort_values('ROAS', ascending=False), x='name', y='ROAS', title="ROAS by Influencer",
@@ -168,7 +162,7 @@ with tab2:
     st.plotly_chart(fig3, use_container_width=True)
 
 # ----------------------------
-# Tab 3: Insights
+# Tab 3: Insights & Export
 # ----------------------------
 with tab3:
     st.subheader("💡 Campaign Insights")
@@ -182,14 +176,13 @@ with tab3:
     col_c.markdown(f"<div class='insight-card'><div class='insight-title'>Lowest ROAS</div>{worst_roas}</div>", unsafe_allow_html=True)
 
     st.markdown("### 📥 Export Insights")
+    
+    # Export CSV
     if st.button("Export Top Influencers CSV"):
         top_inf.to_csv('top_influencers.csv', index=False)
         st.success("✅ Exported as top_influencers.csv")
 
-    def create_download_link(val, filename):
-        b64 = base64.b64encode(val.encode()).decode()
-        return f'<a href="data:file/txt;base64,{b64}" download="{filename}">📄 Download Insights</a>'
-
+    # Export TXT link
     summary_text = f"""HealthKart Campaign Insights\n
     Campaign: {campaign}\n
     Total Revenue: ₹{total_revenue:,.2f}\n
@@ -200,4 +193,27 @@ with tab3:
     Lowest ROAS Influencer: {worst_roas}\n
     Top Influencers Table:\n{top_inf[['name','platform','revenue']].to_string(index=False)}
     """
+
+    def create_download_link(val, filename):
+        b64 = base64.b64encode(val.encode()).decode()
+        return f'<a href="data:file/txt;base64,{b64}" download="{filename}">📄 Download Insights (TXT)</a>'
+
     st.markdown(create_download_link(summary_text, "campaign_insights.txt"), unsafe_allow_html=True)
+
+    # Export PDF
+    def export_pdf(text):
+        file_path = "campaign_insights.pdf"
+        c = canvas.Canvas(file_path, pagesize=letter)
+        c.setFont("Helvetica", 12)
+        text_object = c.beginText(50, 750)
+        for line in text.split("\n"):
+            text_object.textLine(line)
+        c.drawText(text_object)
+        c.showPage()
+        c.save()
+        return file_path
+
+    if st.button("Export Insights as PDF"):
+        pdf_path = export_pdf(summary_text)
+        with open(pdf_path, "rb") as f:
+            st.download_button("📄 Download PDF", f, file_name="campaign_insights.pdf")
