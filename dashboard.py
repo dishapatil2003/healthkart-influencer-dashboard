@@ -6,22 +6,33 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
 # ----------------------------
-# Streamlit Page Config
+# Streamlit Config - Force Light Theme
 # ----------------------------
-st.set_page_config(page_title="HealthKart Dashboard", layout="wide")
+st.set_page_config(page_title="HealthKart Dashboard", layout="wide", initial_sidebar_state="expanded")
 
 # ----------------------------
-# Custom CSS for Professional Light Theme
+# Custom CSS (Light Theme)
 # ----------------------------
 st.markdown("""
     <style>
-    .main {
+    /* Force light mode */
+    body, .main {
         background: linear-gradient(120deg, #f8f9fc, #eef2f7);
+        color: #333333 !important;
     }
+    /* Sidebar */
     section[data-testid="stSidebar"] {
         background-color: #ffffff;
-        border-right: 2px solid #e0e0e0;
+        color: #333333;
+        font-size: 16px;
+        font-weight: 500;
     }
+    section[data-testid="stSidebar"] .stRadio label,
+    section[data-testid="stSidebar"] .stSelectbox label,
+    section[data-testid="stSidebar"] .stMultiSelect label {
+        color: #333333 !important;
+    }
+    /* KPI Cards */
     .kpi-card {
         background: linear-gradient(135deg, #fdfbfb, #ebedee);
         border-radius: 12px;
@@ -38,6 +49,7 @@ st.markdown("""
         font-weight: bold;
         color: #0073e6;
     }
+    /* Insights Cards */
     .insight-card {
         background: #ffffff;
         border-radius: 10px;
