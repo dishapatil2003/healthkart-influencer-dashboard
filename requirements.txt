@@ -1,5 +1,5 @@
-echo "faker==24.0.0
+faker==24.0.0
 streamlit==1.40.1
 pandas==2.2.2
 plotly==5.24.1
-reportlab==4.2.2" > requirements.txt
+reportlab==4.2.2
